@@ -1,19 +1,17 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.HttpsPolicy;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using ShopStore.WebMarket.Data;
-
-namespace ShopStore.WebMarket
+﻿namespace ShopStore.WebMarket
 {
+    using Microsoft.AspNetCore.Builder;
+    using Microsoft.AspNetCore.Hosting;
+    using Microsoft.AspNetCore.Http;
+    using Microsoft.AspNetCore.Identity;
+    using Microsoft.AspNetCore.Mvc;
+    using Microsoft.EntityFrameworkCore;
+    using Microsoft.Extensions.Configuration;
+    using Microsoft.Extensions.DependencyInjection;
+    using Data;
+    using Data.Entities;
+    using Helpers;
+
     public class Startup
     {
         public Startup(IConfiguration configuration)
@@ -26,6 +24,19 @@ namespace ShopStore.WebMarket
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddIdentity<User, IdentityRole>(cfg =>
+            {
+                cfg.User.RequireUniqueEmail = true;
+                cfg.Password.RequireDigit = true;
+                cfg.Password.RequiredUniqueChars = 1;
+                cfg.Password.RequireLowercase = true;
+                cfg.Password.RequireNonAlphanumeric = true;
+                cfg.Password.RequireUppercase = true;
+                cfg.Password.RequiredLength = 8;
+            })
+            .AddEntityFrameworkStores<DataContext>();
+
+
             services.AddDbContext<DataContext>(cfg =>
             {
                 cfg.UseSqlServer(
@@ -35,7 +46,11 @@ namespace ShopStore.WebMarket
 
             services.AddTransient<SeedDb>();
 
-            services.AddScoped<IRepository, Repository>();
+            services.AddScoped<IProductRepository, ProductRepository>();
+
+            services.AddScoped<IUserHelper, UserHelper>();
+
+            services.AddScoped<ICountryRepository, CountryRepository>();
 
             services.Configure<CookiePolicyOptions>(options =>
             {
@@ -63,6 +78,7 @@ namespace ShopStore.WebMarket
 
             app.UseHttpsRedirection();
             app.UseStaticFiles();
+            app.UseAuthentication();
             app.UseCookiePolicy();
 
             app.UseMvc(routes =>

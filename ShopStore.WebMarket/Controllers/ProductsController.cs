@@ -3,23 +3,29 @@
     using System.Threading.Tasks;
     using Data;
     using Data.Entities;
+    using Helpers;
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.EntityFrameworkCore;
     
 
-
     public class ProductsController : Controller
     {
-        private readonly IRepository repository;
+        private readonly IProductRepository productRepository;
 
-        public ProductsController(IRepository repository)
-        {
-            this.repository = repository;
+        private readonly IUserHelper userHelper;
+
+        public ProductsController(
+            IProductRepository productRepository, IUserHelper userHelper)
+        {            
+            this.productRepository = productRepository;
+
+            this.userHelper = userHelper;
+
         }
 
         public IActionResult Index()
         {
-            return View(repository.GetProducts());
+            return View(productRepository.GetAll());
         }
 
         public IActionResult Details(int? id)
@@ -29,7 +35,8 @@
                 return NotFound();
             }
 
-            var product = repository.GetProduct(id.Value);
+            var product = productRepository.
+                GetByIdAsync(id.Value);
 
             if (product == null)
             {
@@ -50,12 +57,17 @@
         {
             if (ModelState.IsValid)
             {
-                repository.AddProduct(product);
+                //TODO Change for the logged user....
+                product.User =
+                    await userHelper.
+                    GetUserByEmailAsync("luedgova1967@gmail.com");
 
-                await repository.SaveAllAsync();
+                await productRepository.
+                    CreateAsync(product);                
 
                 return RedirectToAction(nameof(Index));
             }
+
             return View(product);
         }
 
@@ -66,7 +78,9 @@
                 return NotFound();
             }
 
-            var product = repository.GetProduct(id.Value);
+            var product = 
+                productRepository.
+                GetByIdAsync(id.Value);
 
             if (product == null)
             {
@@ -84,13 +98,16 @@
             {
                 try
                 {
-                    repository.UpdateProduct(product);
+                    //TODO Change for the logged user....
+                    product.User =
+                        await userHelper.
+                        GetUserByEmailAsync("luedgova1967@gmail.com");
 
-                    await repository.SaveAllAsync();
+                    await productRepository.UpdateAsync(product);
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!repository.ProductExists(product.Id))
+                    if (!await productRepository.ExistAsync(product.Id))
                     {
                         return NotFound();
                     }
@@ -106,14 +123,15 @@
             return View(product);
         }
 
-        public IActionResult Delete(int? id)
+        public async Task<IActionResult> Delete(int? id)
         {
             if (id == null)
             {
                 return NotFound();
             }
 
-            var product = repository.GetProduct(id.Value);
+            var product = await productRepository.
+                GetByIdAsync(id.Value);
 
             if (product == null)
             {
@@ -126,12 +144,12 @@
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
-        {
-            var product = repository.GetProduct(id);
+        {            
+            var product = await productRepository.
+                GetByIdAsync(id);
 
-            repository.RemoveProduct(product);
-
-            await repository.SaveAllAsync();
+            await productRepository.
+                DeleteAsync(product);
 
             return RedirectToAction(nameof(Index));
         }
